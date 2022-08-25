@@ -18,14 +18,7 @@ fi
 exit 0
 ```
 
-and the `assignment.cfg` file should contain:
-
-```conf
-[email]
-use_html: true
-```
-
-You will likely also have an `_instructor_tests.py` file in the `tests` folder (files with `_` prefix are run as tests last). The instructor tests work like normal `unittest`s except that they can use additional `TestCase` methods:
+You will likely also have an `_instructor_tests.py` file in the `tests` folder (files with `_` prefix are run as tests last so that students tests in a file like `tests.py` will run first). The instructor tests work like normal `unittest`s except that they can use additional `TestCase` methods:
 
  * `read_file(filename)`: reads the given text file relative the current working directory and returns it.
  * `helpful_failure(msg)`: returns (not raises) an `AssertException` with the given message but also the attribute `helpful_msg` set to it making it print it literally in the helpful tests framework.

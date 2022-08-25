@@ -1,5 +1,6 @@
 import io
 import os
+import sys
 import contextlib
 import unittest
 import warnings
@@ -50,11 +51,17 @@ def __convert_to_html(text):
 
 
 def main():
-    # TODO: needs lots of work (arguments, return code, ...)
+    # TODO: add additional arguments and true argument parsing
     wrap_test_case_asserts()
     add_test_case_special_asserts()
 
-    # Discover the tests but also do some checks since they will be imported
+    # Look at first argument only
+    output_html = False
+    if len(sys.argv) > 1 and sys.argv[1] in ('--html', '--text'):
+        output_html = sys.argv[1] == '--html'
+        del sys.argv[1]
+
+    # Discover the tests but also do some checks since files will be imported
     tc = unittest.TestCase()
     msg = "🤐 You are not allowed to use print() or input() at the top level, everything must be in functions"
     try:
@@ -74,12 +81,22 @@ def main():
     instructor_tests = unittest.defaultTestLoader.discover(os.getcwd(), '_*.py')
 
     # Run the unittests
-    output = io.StringIO()
-    try:
-        with contextlib.redirect_stdout(output):
-            HelpfulTestRunner().run(unittest.TestSuite((tests, instructor_tests)))
-    finally:
-        print(__convert_to_html(output.getvalue()))
+    if output_html:
+        # HTML output requires capture and conversion
+        output = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(output):
+                result = HelpfulTestRunner().run(unittest.TestSuite((tests, instructor_tests)))
+        finally:
+            print(__convert_to_html(output.getvalue()))
+    else:
+        # Text-only output
+        result = HelpfulTestRunner().run(unittest.TestSuite((tests, instructor_tests)))
+
+
+    # Set the exit code
+    sys.exit(0 if result.wasSuccessful() else 1)
+
 
 if __name__ == "__main__":
     main()

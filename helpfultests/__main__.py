@@ -24,7 +24,7 @@ def __convert_to_html(text):
     ins_ = '<ins style="text-decoration:underline;background-color:#d4fcbc;">' 
     del_ = '<del style="text-decoration:line-through;background-color:#fbb;color:#555;">'
     b_ = '<b style="font-style:italic;font-weight:bolder;color:green;">'
-    output = '<pre>'
+    output = '<html><head></head><body><pre>'
     bolding = underlining = strikethrough = False
     last_ch = ''
     for raw_ch in text:
@@ -45,7 +45,7 @@ def __convert_to_html(text):
     if bolding: output += '</b>'
     if underlining: output += '</ins>'
     if strikethrough: output += '</del>'
-    output += '</pre>'
+    output += '</pre></body></html>'
     return output
 
 

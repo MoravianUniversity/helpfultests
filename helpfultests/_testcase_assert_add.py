@@ -230,6 +230,7 @@ def __check_output(self, msg, printed, inpt_ranges, expected,
         if _regexp:
             expected_note = ' (this is a regular-expression, so will likely look cryptic)'
         if inpt_ranges:
+            inpt_ranges.sort(key=lambda x: x[0], reverse=True)
             for start, length in inpt_ranges:
                 printed_orig = __bold_substr(printed_orig, start, start+length)
             actual_note = ' (green text is user entered)'

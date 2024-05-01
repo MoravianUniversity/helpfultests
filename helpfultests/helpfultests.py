@@ -165,22 +165,41 @@ class HelpfulTestRunner:
 def __has_doc(body):
     return isinstance(body[0], ast.Expr) and isinstance(body[0].value, ast.Str)
 
-def check_module_structure(name, require_doc=False, forbid_useless_pass=False):
+def __func_or_class_name(module, func_or_class):
+    fullname = f"{module}.{func_or_class.name}"
+    if isinstance(func_or_class, ast.FunctionDef):
+        fullname += '()'
+    return fullname
+
+def __has_useless_pass(stmt):
+    # Only allowed pass are:
+    #   as only non-documentation statement in function or class
+    #   as only statement in except
+    if isinstance(stmt, ast.Pass):
+        return True
+    elif isinstance(stmt, (ast.FunctionDef, ast.ClassDef)):
+        pass_pos = 1 if __has_doc(stmt) else 0
+        if len(stmt.body) == pass_pos+1 and isinstance(stmt.body[pass_pos], ast.Pass):
+            return False
+    elif isinstance(stmt, ast.ExceptHandler):
+        if len(stmt.body) == 1 and isinstance(stmt.body[0], ast.Pass):
+            return False
+    return any(__has_useless_pass(s) for s in stmt.body) if hasattr(stmt, 'body') else False
+
+def _check_module_structure(name, require_func_doc=True, check_main=True, main_requires_doc=False):
     """
     Makes sure that a module only contains a single string at the very beginning (for
     documentation), optional imports after that, optional assignment statements after that,
-    function definitions, and then a single if at the very end.
+    function and class definitions, and then a single if at the very end.
 
-    Optionally can also check that every function has documentation and that there are no pass
-    statements directly inside functions that have other code.
+    NOTE: This function is incomplete
     """
     filename = name + '.py' # TODO
     with open(filename) as file:
         root = ast.parse(file.read(), filename)
     body = root.body[:]
     # Documentation check
-    if not __has_doc(body[0]):
-        pass # TODO
+    if not __has_doc(body[0]): return f"Module {name} does not have documentation"
     body.pop(0)
     # Import and assignment checks
     while body and isinstance(body[0], (ast.Import, ast.ImportFrom)):
@@ -189,29 +208,33 @@ def check_module_structure(name, require_doc=False, forbid_useless_pass=False):
         # TODO: body[0].value should only be simple types
         body.pop(0)
     # Function checks
-    func_count = 0
-    while body and isinstance(body[0], ast.FunctionDef):
-        func_count += 1
-        has_doc = __has_doc(body)
-        if require_doc and not has_doc: pass # TODO
-        if (forbid_useless_pass and len(body[0].body) > (2 if has_doc else 1) and
-                any(isinstance(stmt, ast.Pass) for stmt in body[0].body)):
-            pass # TODO
+    func_names = []
+    while body and isinstance(body[0], (ast.FunctionDef, ast.ClassDef)):
+        func_or_class = body[0]
+        is_main = func_or_class.name == "main"
+        has_doc = __has_doc(func_or_class)
+        func_names.append(func_or_class.name)
+        if require_func_doc and not has_doc and (not is_main or main_requires_doc):
+            return f"{__func_or_class_name(name, func_or_class)} does not have documentation"
+        # Note: does not check class methods for documentation
         body.pop(0)
-    if func_count == 0:
-        pass # TODO
-    # Final if statment
-    if not body:
-        pass # TODO
-    if len(body) > 1:
-        pass # TODO
+    if len(set(func_names)) != len(func_names):
+        return f"{name} has multiple functions with the same name"
+    if not check_main:
+        if body: return f"{name} has code after the last function"
+        return None
+
+    # Final if statement
+    if 'main' not in func_names: return f"{name} has no main() function"
+    if not body: return f"{name} has no conditional call to main() function"
+    if len(body) > 1: return f"{name} has code after the last function unrelated to calling main()"
     if not isinstance(body[0], ast.If) or body[0].orelse is not None or len(body[0].body) != 1:
-        pass # TODO
+        return f"{name} has a bad conditional call to main() at the end"
     test = body[0].test
     call = body[0].body[0]
     # TODO: left or comparators[0] must be a Name with .id == "__name__" with the other being a
     # Str with s == "__main__"
     if not isinstance(test, ast.Compare) or test.ops != [ast.Eq] or len(test.comparators) != 1:
-        pass # TODO
+        return f"{name} has a bad conditional call to main() at the end"
     if not isinstance(call, ast.Expr) or not isinstance(call.value, ast.Call):
-        pass # TODO
+        return f"{name} has a bad conditional call to main() at the end"

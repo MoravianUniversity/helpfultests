@@ -388,3 +388,14 @@ def add_test_case_special_asserts():
     unittest.TestCase.assertNoPrint = _assertNoPrint
     unittest.TestCase.assertNoInput = _assertNoInput
     unittest.TestCase.assertDoc = _assertDoc
+
+def check_and_import(name):
+    #_check_module_structure(name, require_func_doc=True, check_main=True, main_requires_doc=False)
+    tc = unittest.TestCase()
+    msg = "🤐 You are not allowed to use print() or input() at the top level, everything must be in functions"
+    try:
+        with _assertNoPrint(tc, msg=msg), _assertNoInput(tc, msg=msg):
+            mod = __import__(name)
+    except AssertionError as ex:
+        print(getattr(ex, 'helpful_msg', str(ex)))
+    return mod
